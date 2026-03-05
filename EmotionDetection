@@ -1,0 +1,73 @@
+import os
+import numpy as np
+
+def load_model_weights(file_path):
+    if os.path.exists(file_path):
+        print(f"Loading model weights from {file_path}...")
+        return np.load(file_path, allow_pickle=True).item()
+    else:
+        print(f"File {file_path} not found. Using random placeholder weights.")
+        W = np.random.normal(size=(48 * 48, 7))
+        b = np.zeros(7)
+        return {'W': W, 'b': b}
+# Softmax function to predict probabilities
+def softmax(x):
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
+# Predict emotion from features
+def predict_emotion(features, model_weights):
+    logits = np.dot(features, model_weights['W']) + model_weights['b']
+    return softmax(logits)
+# Extract features from the image
+def extract_features(image):
+    image = ImageOps.grayscale(image)
+    image = image.resize((48, 48))
+    feature = np.array(image).flatten()
+    return feature / 255.0
+# Define emotion labels
+labels = {
+    0: 'angry',
+    1: 'disgust',
+    2: 'fear',
+    3: 'happy',
+    4: 'neutral',
+    5: 'sad',
+    6: 'surprise'
+}
+# Load model weights
+model_weights_path = "facialemotionmodel_weights.npy"
+model_weights = load_model_weights(model_weights_path)
+
+# Load the image
+image_path = "download.jpg"  # Replace with your image path
+image = Image.open(image_path)  # loads an image from a specified file path
+
+# Assuming the entire image is the face
+(x, y, w, h) = (0, 0, image.width, image.height)
+
+# Extract the face
+face_image = image.crop((x, y, x + w, y + h))
+features = extract_features(face_image)
+
+# Predict the emotion
+pred_probs = predict_emotion(features, model_weights)
+prediction_label = labels[np.argmax(pred_probs)]
+
+# Debugging: Print the predicted probabilities
+print("Predicted probabilities:", pred_probs)
+print("Predicted emotion:", prediction_label)
+# Debugging: Print the predicted probabilities
+print("Predicted probabilities:", pred_probs)
+print("Predicted emotion:", prediction_label)
+
+# Draw the result on the image
+result_image = image.copy()
+draw = ImageDraw.Draw(result_image)  # draw shapes and text on the image
+draw.rectangle([(x, y), (x + w, y + h)], outline="green", width=2)
+draw.text((x + 10, y + 10), prediction_label, fill="green", anchor="ms")
+
+# Display the result using Pillow
+result_image.show()  # Displays the image with the predicted emotion label.
+
+# Optionally, save the result image
+result_image.save("download.jpg")  # Saves the image with any modifications
